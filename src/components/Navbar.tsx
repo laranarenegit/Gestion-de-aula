@@ -20,6 +20,7 @@ interface NavbarProps {
   onLogin: () => void;
   onLogout: () => void;
   onOpenGuide: () => void;
+  onOpenAntiXGuide?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -29,6 +30,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onLogin,
   onLogout,
   onOpenGuide,
+  onOpenAntiXGuide,
 }) => {
   const { theme, themeKey, setThemeKey } = useTheme();
   const [showThemeMenu, setShowThemeMenu] = useState(false);
@@ -52,12 +54,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className={`text-base sm:text-lg font-bold tracking-tight ${theme.textPrimaryClass}`}>
                   Gestión de Estudiantes
                 </span>
-                <span className="hidden sm:inline-block px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase rounded-full bg-slate-100 text-slate-700 dark:bg-[#161B22] dark:text-slate-300 dark:border dark:border-[#30363D]">
-                  Workspace DB
+                <span className="hidden sm:inline-block px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                  antiX Local
                 </span>
               </div>
               <p className={`text-xs hidden md:block ${theme.textSecondaryClass}`}>
-                Sincronización Sheets, Drive & Docs • Next.js Ready
+                Planillas de Cálculo • Procesador de Texto • 100% Autónomo
               </p>
             </div>
           </div>
@@ -92,7 +94,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           </nav>
 
-          {/* Right Action Tools: Themes, Deployment Guide & Google Account */}
+          {/* Right Action Tools: Themes, antiX Terminal Guide & Account */}
           <div className="flex items-center gap-2">
             
             {/* Theme Selector Dropdown */}
@@ -152,19 +154,32 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </div>
 
+            {/* antiX Terminal Guide Button */}
+            {onOpenAntiXGuide && (
+              <button
+                id="btn-nav-antix-terminal-guide"
+                type="button"
+                onClick={onOpenAntiXGuide}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-emerald-600/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-600/30 transition-colors"
+                title="Comandos para instalar y ejecutar en antiX Linux por terminal"
+              >
+                <span>🐧 Terminal antiX</span>
+              </button>
+            )}
+
             {/* Next.js & Vercel Deployment Guide Modal Trigger */}
             <button
               id="btn-deployment-guide"
               type="button"
               onClick={onOpenGuide}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border ${theme.borderClass} ${theme.cardBgClass} ${theme.textPrimaryClass} hover:bg-slate-100 dark:hover:bg-[#1F2937] transition-colors`}
-              title="Ver guía completa para Next.js, Vercel y GitHub"
+              className={`hidden md:inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border ${theme.borderClass} ${theme.cardBgClass} ${theme.textSecondaryClass} hover:${theme.textPrimaryClass} hover:bg-slate-100 dark:hover:bg-[#1F2937] transition-colors`}
+              title="Ver guía para Next.js, Vercel y GitHub"
             >
-              <HelpCircle className="w-4 h-4 text-emerald-400" />
-              <span className="hidden sm:inline">Guía Next.js & Vercel</span>
+              <HelpCircle className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Vercel/GitHub</span>
             </button>
 
-            {/* Google User Menu or Sign In Button */}
+            {/* Google User Menu or Sign In Button (Optional) */}
             {user ? (
               <div className="relative">
                 <button
@@ -214,13 +229,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </div>
 
                     <div className="space-y-1">
-                      {/* Switch Google Account Option (Explicitly requested: "con otra cuenta de google") */}
+                      {/* Switch Google Account Option */}
                       <button
                         id="btn-switch-google-account"
                         type="button"
                         onClick={() => {
                           setShowUserMenu(false);
-                          onLogin(); // triggers prompt: 'select_account'
+                          onLogin();
                         }}
                         className={`w-full text-left px-2.5 py-2 rounded-lg text-xs flex items-center gap-2 ${theme.textPrimaryClass} hover:bg-slate-100 dark:hover:bg-[#1F2937] transition-colors`}
                       >
@@ -245,17 +260,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </div>
                 )}
               </div>
-            ) : (
-              <button
-                id="btn-navbar-google-signin"
-                type="button"
-                onClick={onLogin}
-                className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-xs transition-colors"
-              >
-                <UserIcon className="w-3.5 h-3.5" />
-                <span>Acceder con Google</span>
-              </button>
-            )}
+            ) : null}
           </div>
         </div>
       </div>

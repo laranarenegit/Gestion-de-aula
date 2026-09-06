@@ -1,6 +1,6 @@
 {
   "name": "Gestión de Estudiantes",
-  "description": "Sistema integral de gestión de estudiantes, calificaciones, bitácora de clases y generación de informes sincronizado con Google Workspace.",
+  "description": "Sistema integral de gestión de estudiantes, calificaciones, bitácora de clases y generación de informes con planillas de cálculo y procesador de texto para ejecución local en antiX Linux.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

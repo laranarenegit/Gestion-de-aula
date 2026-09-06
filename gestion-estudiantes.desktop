@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Gestión de Estudiantes
+Comment=Sistema local para gestión académica y planillas de cálculo (antiX Linux)
+Exec=bash -c "cd $(dirname %k) && ./iniciar-antix.sh"
+Icon=x-office-spreadsheet
+Terminal=true
+Categories=Education;Office;Development;
+StartupNotify=true

@@ -7,11 +7,14 @@ import {
   CheckCircle2, 
   Loader2, 
   FolderCheck,
-  AlertCircle
+  AlertCircle,
+  FileCode,
+  Printer
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { Student, ClassSession } from '../types';
 import { generateStudentPDF } from '../services/pdfGenerator';
+import { generateWordProcessorReport, WordProcessorFormat } from '../services/wordProcessorService';
 import { createGoogleDocReport } from '../services/googleWorkspace';
 
 interface ReportModalProps {
@@ -35,11 +38,22 @@ export const ReportModal: React.FC<ReportModalProps> = ({
   const [isGeneratingDoc, setIsGeneratingDoc] = useState(false);
   const [generatedDocUrl, setGeneratedDocUrl] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successNotice, setSuccessNotice] = useState<string | null>(null);
 
   if (!isOpen || !student) return null;
 
   const handleDownloadPDF = () => {
     generateStudentPDF(student, classSessions);
+  };
+
+  const handleDownloadWordProcessor = (format: WordProcessorFormat) => {
+    try {
+      generateWordProcessorReport(student, classSessions, format);
+      setSuccessNotice(`Documento .${format.toUpperCase()} generado. Puedes abrirlo directamente con LibreOffice Writer o AbiWord.`);
+      setTimeout(() => setSuccessNotice(null), 5000);
+    } catch (err: any) {
+      setErrorMsg(`Error al generar el documento: ${err.message}`);
+    }
   };
 
   const handleCreateGoogleDoc = async () => {
@@ -140,64 +154,50 @@ export const ReportModal: React.FC<ReportModalProps> = ({
         {/* Action Options */}
         <div className="mt-6 space-y-3">
           <h5 className={`text-xs font-bold uppercase tracking-wider ${theme.textMutedClass}`}>
-            Seleccionar Formato de Exportación
+            Seleccionar Formato de Exportación (100% Local y Offline)
           </h5>
 
-          {/* Option 1: Google Docs & Drive */}
-          <div className={`p-4 rounded-xl border ${theme.borderClass} ${theme.cardBgClass} flex flex-col sm:flex-row sm:items-center justify-between gap-3`}>
+          {/* Option 1: Word Processor (LibreOffice Writer / AbiWord) */}
+          <div className={`p-4 rounded-xl border border-indigo-500/30 ${theme.surfaceClass} flex flex-col sm:flex-row sm:items-center justify-between gap-3`}>
             <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-400 shrink-0">
-                <FolderCheck className="w-5 h-5" />
+              <div className="p-2 rounded-lg bg-indigo-500/15 text-indigo-400 shrink-0">
+                <FileText className="w-5 h-5" />
               </div>
               <div>
-                <p className={`text-sm font-semibold ${theme.textPrimaryClass}`}>
-                  Crear en Google Docs & Guardar en Drive
-                </p>
+                <div className="flex items-center gap-1.5">
+                  <p className={`text-sm font-semibold ${theme.textPrimaryClass}`}>
+                    Procesador de Texto (LibreOffice Writer / AbiWord)
+                  </p>
+                  <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-emerald-500/20 text-emerald-400">
+                    antiX
+                  </span>
+                </div>
                 <p className={`text-xs ${theme.textSecondaryClass}`}>
-                  Crea un documento editable en la carpeta <span className="font-mono text-[11px] font-semibold text-indigo-400">Gestion_Estudiantes_Informes</span>.
+                  Documento editable con formato oficial, tablas de asistencia y membrete listo para editar en antiX.
                 </p>
               </div>
             </div>
 
-            <button
-              id="btn-export-google-doc"
-              type="button"
-              onClick={handleCreateGoogleDoc}
-              disabled={isGeneratingDoc}
-              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors disabled:opacity-50 shrink-0"
-            >
-              {isGeneratingDoc ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Creando Doc...</span>
-                </>
-              ) : (
-                <>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Generar en Docs</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          {generatedDocUrl && (
-            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-900 text-emerald-800 dark:text-emerald-200 text-xs flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>¡Documento de Google creado exitosamente en tu Drive!</span>
-              </div>
-              <a
-                id="link-open-created-doc"
-                href={generatedDocUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shrink-0"
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => handleDownloadWordProcessor('doc')}
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"
+                title="Abrir en LibreOffice Writer o Word"
               >
-                <span>Abrir Google Doc</span>
-                <ExternalLink className="w-3 h-3" />
-              </a>
+                <Download className="w-3.5 h-3.5" />
+                <span>Formato .DOC</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDownloadWordProcessor('rtf')}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 dark:border-[#30363D] text-slate-700 dark:text-[#C9D1D9] hover:bg-slate-100 dark:hover:bg-[#1F2937] transition-colors"
+                title="Formato ligero universal para AbiWord"
+              >
+                <span>.RTF</span>
+              </button>
             </div>
-          )}
+          </div>
 
           {/* Option 2: Download PDF Direct */}
           <div className={`p-4 rounded-xl border ${theme.borderClass} ${theme.cardBgClass} flex flex-col sm:flex-row sm:items-center justify-between gap-3`}>
@@ -225,6 +225,71 @@ export const ReportModal: React.FC<ReportModalProps> = ({
               <span>Descargar PDF</span>
             </button>
           </div>
+
+          {/* Option 3: Google Docs (Optional only if user connects) */}
+          {accessToken && (
+            <div className={`p-4 rounded-xl border ${theme.borderClass} ${theme.cardBgClass} flex flex-col sm:flex-row sm:items-center justify-between gap-3 opacity-80 hover:opacity-100 transition-opacity`}>
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-400 shrink-0">
+                  <FolderCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className={`text-sm font-semibold ${theme.textPrimaryClass}`}>
+                    Google Docs en la Nube (Opcional)
+                  </p>
+                  <p className={`text-xs ${theme.textSecondaryClass}`}>
+                    Guarda una copia en tu cuenta de Google Drive sincronizada.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                id="btn-export-google-doc"
+                type="button"
+                onClick={handleCreateGoogleDoc}
+                disabled={isGeneratingDoc}
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 dark:border-[#30363D] text-slate-700 dark:text-[#C9D1D9] hover:bg-slate-100 dark:hover:bg-[#1F2937] transition-colors disabled:opacity-50 shrink-0"
+              >
+                {isGeneratingDoc ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Creando...</span>
+                  </>
+                ) : (
+                  <>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Subir a Docs</span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
+          {generatedDocUrl && (
+            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-900 text-emerald-800 dark:text-emerald-200 text-xs flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>¡Documento de Google creado exitosamente en tu Drive!</span>
+              </div>
+              <a
+                id="link-open-created-doc"
+                href={generatedDocUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shrink-0"
+              >
+                <span>Abrir Google Doc</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          )}
+
+          {successNotice && (
+            <div className="p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+              <span>{successNotice}</span>
+            </div>
+          )}
         </div>
 
         {errorMsg && (

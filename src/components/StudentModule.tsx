@@ -18,6 +18,8 @@ import { StudentModal } from './StudentModal';
 import { QuickAttendanceModal } from './QuickAttendanceModal';
 import { ReportModal } from './ReportModal';
 import { ConfirmDialog } from './ConfirmDialog';
+import { exportDatabaseToSpreadsheet } from '../services/spreadsheetService';
+import { FileSpreadsheet } from 'lucide-react';
 
 interface StudentModuleProps {
   students: Student[];
@@ -185,8 +187,19 @@ export const StudentModule: React.FC<StudentModuleProps> = ({
           </div>
         </div>
 
-        {/* Buttons: Add Student & Quick Attendance */}
+        {/* Buttons: Add Student, Quick Attendance & Export Calc */}
         <div className="flex items-center gap-2 shrink-0">
+          <button
+            id="btn-export-calc-ods"
+            type="button"
+            onClick={() => exportDatabaseToSpreadsheet(students, classSessions, 'ods')}
+            title="Descargar base de datos en formato LibreOffice Calc (.ods)"
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-slate-300 dark:border-[#30363D] text-slate-700 dark:text-[#C9D1D9] hover:bg-slate-100 dark:hover:bg-[#1F2937] transition-colors shadow-xs"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+            <span className="hidden sm:inline">Planilla Calc (.ods)</span>
+          </button>
+
           <button
             id="btn-open-quick-attendance"
             type="button"

@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { Navbar } from './components/Navbar';
+import { LocalDatabaseBar } from './components/LocalDatabaseBar';
 import { GoogleSyncBar } from './components/GoogleSyncBar';
 import { StudentModule } from './components/StudentModule';
 import { ClassLogModule } from './components/ClassLogModule';
 import { DeploymentGuideModal } from './components/DeploymentGuideModal';
+import { AntiXTerminalGuideModal } from './components/AntiXTerminalGuideModal';
 import { Student, ClassSession, GoogleUser, WorkspaceSyncState } from './types';
 import { INITIAL_STUDENTS, INITIAL_CLASSES, calculatePromedio, getStudentStatus } from './data/initialData';
 import { 
@@ -27,6 +29,8 @@ function AppContent() {
 
   // Deployment & Export Guide Modal
   const [isGuideOpen, setIsGuideOpen] = useState(false);
+  // antiX Terminal Guide Modal
+  const [isAntiXGuideOpen, setIsAntiXGuideOpen] = useState(false);
 
   // Authentication State
   const [user, setUser] = useState<GoogleUser | null>(null);
@@ -325,7 +329,7 @@ function AppContent() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Navbar with Account Switcher and Theme Selector */}
+      {/* Navbar with Account Switcher, Theme Selector and antiX guide */}
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -333,16 +337,27 @@ function AppContent() {
         onLogin={handleLogin}
         onLogout={handleLogout}
         onOpenGuide={() => setIsGuideOpen(true)}
+        onOpenAntiXGuide={() => setIsAntiXGuideOpen(true)}
       />
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Google Workspace Sync Status Header */}
-        <GoogleSyncBar
-          syncState={syncState}
-          onSync={handleSyncNow}
-          onLogin={handleLogin}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
+        {/* Local antiX Database & Office Integration Bar (Primary) */}
+        <LocalDatabaseBar
+          students={students}
+          classSessions={classSessions}
+          onImportStudents={(importedStudents) => setStudents(importedStudents)}
+          onOpenTerminalGuide={() => setIsAntiXGuideOpen(true)}
         />
+
+        {/* Google Workspace Sync (Optional Cloud Mirror) */}
+        {user && (
+          <GoogleSyncBar
+            syncState={syncState}
+            onSync={handleSyncNow}
+            onLogin={handleLogin}
+          />
+        )}
 
         {/* Dynamic Views */}
         {activeTab === 'students' ? (
@@ -365,19 +380,38 @@ function AppContent() {
         )}
       </main>
 
-      {/* Footer */}
-      <footer className={`py-6 border-t ${theme.borderClass} ${theme.cardBgClass} text-center text-xs ${theme.textSecondaryClass}`}>
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>Gestión de Estudiantes • Google Sheets, Drive & Docs API</span>
-          <button
-            type="button"
-            onClick={() => setIsGuideOpen(true)}
-            className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
-          >
-            Ver arquitectura Next.js, GitHub & Vercel
-          </button>
+      {/* Footer with quick links for antiX Linux & Next.js */}
+      <footer className={`py-6 border-t ${theme.borderClass} ${theme.cardBgClass} text-xs ${theme.textSecondaryClass}`}>
+        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span>Gestión de Estudiantes • Optimizado para <strong>antiX Linux</strong> & LibreOffice</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <button
+              id="btn-footer-antix-terminal"
+              type="button"
+              onClick={() => setIsAntiXGuideOpen(true)}
+              className="text-emerald-400 hover:text-emerald-300 font-semibold inline-flex items-center gap-1"
+            >
+              <span>🐧 Comandos Terminal antiX</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsGuideOpen(true)}
+              className="text-indigo-400 hover:text-indigo-300 hover:underline font-medium"
+            >
+              Guía Next.js & Vercel
+            </button>
+          </div>
         </div>
       </footer>
+
+      {/* antiX Linux Terminal Installation & Run Guide Modal */}
+      <AntiXTerminalGuideModal
+        isOpen={isAntiXGuideOpen}
+        onClose={() => setIsAntiXGuideOpen(false)}
+      />
 
       {/* Deployment & Export Guide Modal */}
       <DeploymentGuideModal

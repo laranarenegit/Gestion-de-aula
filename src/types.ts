@@ -3,6 +3,16 @@
  * Gestion de Estudiantes con Google Workspace
  */
 
+export interface Course {
+  id: string; // e.g. "CUR-001"
+  nombre: string; // e.g. "1° Año 'A' - Informática"
+  materia: string; // e.g. "Introducción a la Programación"
+  nivelTurno?: string; // e.g. "Secundaria - Turno Mañana"
+  anioLectivo?: string; // e.g. "2026"
+  color?: 'emerald' | 'indigo' | 'violet' | 'amber' | 'rose' | 'sky';
+  descripcion?: string;
+}
+
 export interface Student {
   id: string; // ID_Estudiante e.g. "EST-001"
   nombre: string; // Nombre_y_Apellido
@@ -13,6 +23,7 @@ export interface Student {
   email?: string;
   observaciones?: string;
   estado?: 'Aprobado' | 'Regular' | 'En Riesgo';
+  courseId?: string; // ID del curso o grupo al que pertenece el estudiante
 }
 
 export interface StudentClassProgress {
@@ -31,11 +42,13 @@ export interface ClassSession {
   temario: string; // Temario / Contenidos Vistos
   observaciones: string; // Observaciones generales
   progresoEstudiantes: StudentClassProgress[]; // Progreso individual por estudiante vinculado
+  courseId?: string; // ID del curso opcional para bitácora por grupo
 }
 
 export type ThemeKey = 
-  | 'azul-corporativo'
+  | 'gamer-8bit'
   | 'oscuro-elegante'
+  | 'azul-corporativo'
   | 'minimalista-minimal'
   | 'pastel-educativo'
   | 'esmeralda-academico';

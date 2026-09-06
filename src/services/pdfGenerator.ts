@@ -1,5 +1,182 @@
 import { jsPDF } from 'jspdf';
-import { Student, ClassSession } from '../types';
+import { Student, ClassSession, Course } from '../types';
+
+export function generateCoursePDF(course: Course, students: Student[], classSessions: ClassSession[]): void {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const primaryColor: [number, number, number] = [15, 23, 42]; // Slate 900
+  const secondaryColor: [number, number, number] = [71, 85, 105]; // Slate 600
+  const lightBg: [number, number, number] = [248, 250, 252];
+  const accentBorder: [number, number, number] = [203, 213, 225];
+
+  // Header Banner
+  doc.setFillColor(...primaryColor);
+  doc.rect(0, 0, 210, 30, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(15);
+  doc.text('PLANILLA OFICIAL DE CALIFICACIONES Y SEGUIMIENTO', 15, 13);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.5);
+  doc.text(`${course.nombre} • ${course.materia}`, 15, 21);
+
+  const todayStr = new Date().toLocaleDateString('es-ES', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+  doc.text(`Ciclo: ${course.anioLectivo || '2026'} | Emisión: ${todayStr}`, 135, 21);
+
+  // Course Details Strip
+  let y = 38;
+  doc.setFillColor(...lightBg);
+  doc.setDrawColor(...accentBorder);
+  doc.roundedRect(15, y, 180, 24, 2, 2, 'FD');
+
+  const courseStudents = students.filter(s => s.courseId === course.id);
+  const totalStudents = courseStudents.length;
+  const avgPromedio = totalStudents > 0 
+    ? (courseStudents.reduce((sum, s) => sum + s.promedioFinal, 0) / totalStudents).toFixed(1)
+    : '0';
+  const avgAsistencia = totalStudents > 0 
+    ? Math.round(courseStudents.reduce((sum, s) => sum + s.asistencia, 0) / totalStudents)
+    : 0;
+  const aprobados = courseStudents.filter(s => s.estado === 'Aprobado').length;
+  const regulares = courseStudents.filter(s => s.estado === 'Regular').length;
+  const enRiesgo = courseStudents.filter(s => s.estado === 'En Riesgo').length;
+
+  doc.setTextColor(...primaryColor);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text(`Nivel / Turno: ${course.nivelTurno || 'No especificado'}`, 20, y + 8);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...secondaryColor);
+  doc.text(`Descripción: ${course.descripcion || 'Sin observaciones curriculares adicionales'}`, 20, y + 16);
+
+  // KPI Boxes
+  y += 29;
+  const metrics = [
+    { label: 'Matrícula', value: `${totalStudents} Alumnos` },
+    { label: 'Promedio General', value: `${avgPromedio} / 10` },
+    { label: 'Asistencia Media', value: `${avgAsistencia}%` },
+    { label: 'Aprobados / Riesgo', value: `${aprobados} Apr. / ${enRiesgo} Riesgo` },
+  ];
+
+  metrics.forEach((m, i) => {
+    const bx = 15 + i * 46;
+    doc.setFillColor(241, 245, 249);
+    doc.setDrawColor(...accentBorder);
+    doc.roundedRect(bx, y, 42, 14, 1.5, 1.5, 'FD');
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...secondaryColor);
+    doc.text(m.label, bx + 4, y + 5);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(...primaryColor);
+    doc.text(m.value, bx + 4, y + 10.5);
+  });
+
+  // Students Table
+  y += 20;
+  doc.setFillColor(...primaryColor);
+  doc.rect(15, y, 180, 8, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('#', 18, y + 5.5);
+  doc.text('Estudiante', 26, y + 5.5);
+  doc.text('Asistencia', 96, y + 5.5);
+  doc.text('Trab. Clase', 120, y + 5.5);
+  doc.text('Parciales', 145, y + 5.5);
+  doc.text('Promedio', 168, y + 5.5);
+  doc.text('Estado', 184, y + 5.5);
+
+  y += 8;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+
+  if (courseStudents.length === 0) {
+    doc.setTextColor(...secondaryColor);
+    doc.text('No hay estudiantes asignados a este curso o sección.', 20, y + 8);
+    y += 15;
+  } else {
+    courseStudents.forEach((student, idx) => {
+      if (y > 260) {
+        doc.addPage();
+        y = 20;
+      }
+
+      if (idx % 2 === 0) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(15, y, 180, 7.5, 'F');
+      }
+
+      doc.setDrawColor(226, 232, 240);
+      doc.line(15, y + 7.5, 195, y + 7.5);
+
+      doc.setTextColor(...secondaryColor);
+      doc.text(String(idx + 1), 18, y + 5);
+
+      doc.setTextColor(...primaryColor);
+      doc.setFont('helvetica', 'bold');
+      const cleanName = student.nombre.length > 28 ? `${student.nombre.substring(0, 26)}...` : student.nombre;
+      doc.text(cleanName, 26, y + 5);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...secondaryColor);
+      doc.text(`${student.asistencia}%`, 96, y + 5);
+      doc.text(String(student.trabajoEnClase), 122, y + 5);
+      
+      const parcialesStr = student.notasParciales.slice(0, 3).join(', ');
+      doc.text(parcialesStr || '-', 145, y + 5);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...primaryColor);
+      doc.text(student.promedioFinal.toFixed(1), 170, y + 5);
+
+      // Estado
+      const stColor: [number, number, number] = 
+        student.estado === 'Aprobado' ? [22, 101, 52] :
+        student.estado === 'Regular' ? [180, 83, 9] : [185, 28, 28];
+      doc.setTextColor(...stColor);
+      doc.setFontSize(7.5);
+      doc.text(student.estado || 'Regular', 184, y + 5);
+      doc.setFontSize(8);
+
+      y += 7.5;
+    });
+  }
+
+  // Signatures
+  y = Math.max(y + 15, 250);
+  if (y > 270) {
+    doc.addPage();
+    y = 40;
+  }
+
+  doc.setDrawColor(180, 180, 180);
+  doc.line(25, y, 85, y);
+  doc.line(125, y, 185, y);
+
+  doc.setTextColor(...secondaryColor);
+  doc.setFontSize(8);
+  doc.text('Firma y Aclaración del Docente Titular', 28, y + 5);
+  doc.text('Firma y Sello Dirección de la Escuela', 128, y + 5);
+
+  const cleanCourseName = course.nombre.replace(/[^a-zA-Z0-9]/g, '_');
+  doc.save(`Planilla_Curso_${cleanCourseName}.pdf`);
+}
 
 export function generateStudentPDF(student: Student, classSessions: ClassSession[]): void {
   const doc = new jsPDF({

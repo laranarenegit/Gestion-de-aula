@@ -10,29 +10,37 @@ import {
   HardDrive,
   RefreshCw,
   ChevronDown,
-  FileDown
+  FileDown,
+  Save,
+  FileCode
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
-import { Student, ClassSession } from '../types';
+import { Student, ClassSession, Course } from '../types';
 import { 
   exportDatabaseToSpreadsheet, 
   importSpreadsheetToDatabase, 
   downloadSpreadsheetTemplate,
+  exportFullDatabaseJson,
+  importFullDatabaseJson,
   SpreadsheetFormat 
 } from '../services/spreadsheetService';
 
 interface LocalDatabaseBarProps {
+  courses?: Course[];
   students: Student[];
   classSessions: ClassSession[];
   onImportStudents: (importedStudents: Student[]) => void;
+  onImportFullDatabase?: (data: { courses: Course[]; students: Student[]; classSessions: ClassSession[] }) => void;
   onOpenTerminalGuide: () => void;
-  onResetToInitial: () => void;
+  onResetToInitial?: () => void;
 }
 
 export const LocalDatabaseBar: React.FC<LocalDatabaseBarProps> = ({
+  courses = [],
   students,
   classSessions,
   onImportStudents,
+  onImportFullDatabase,
   onOpenTerminalGuide,
   onResetToInitial,
 }) => {
@@ -62,25 +70,56 @@ export const LocalDatabaseBar: React.FC<LocalDatabaseBarProps> = ({
     }
   };
 
+  const handleExportJsonBackup = () => {
+    try {
+      exportFullDatabaseJson(courses, students, classSessions);
+      setIsExportMenuOpen(false);
+      setImportStatus({
+        type: 'success',
+        message: 'Copia de seguridad local en JSON descargada con éxito.',
+      });
+      setTimeout(() => setImportStatus({ type: null, message: '' }), 4000);
+    } catch (err: any) {
+      setImportStatus({
+        type: 'error',
+        message: `Error al guardar copia de seguridad: ${err.message}`,
+      });
+    }
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setImportStatus({ type: 'loading', message: `Leyendo planilla "${file.name}"...` });
+    setImportStatus({ type: 'loading', message: `Leyendo archivo "${file.name}"...` });
 
     try {
-      const result = await importSpreadsheetToDatabase(file);
-      if (result.students && result.students.length > 0) {
-        onImportStudents(result.students);
+      // Check if it's a JSON database backup
+      if (file.name.endsWith('.json')) {
+        const dbResult = await importFullDatabaseJson(file);
+        if (onImportFullDatabase) {
+          onImportFullDatabase(dbResult);
+        } else {
+          onImportStudents(dbResult.students);
+        }
         setImportStatus({
           type: 'success',
-          message: result.message,
+          message: `Base de datos restaurada: ${dbResult.courses.length} cursos, ${dbResult.students.length} estudiantes y ${dbResult.classSessions.length} clases.`,
         });
+      } else {
+        const result = await importSpreadsheetToDatabase(file);
+        if (result.students && result.students.length > 0) {
+          onImportStudents(result.students);
+          setImportStatus({
+            type: 'success',
+            message: result.message,
+          });
+        }
       }
     } catch (err: any) {
       setImportStatus({
         type: 'error',
-        message: err.message || 'Error al procesar la planilla seleccionada.',
+        message: err.message || 'Error al procesar el archivo seleccionado.',
       });
     } finally {
       if (fileInputRef.current) {
@@ -106,49 +145,49 @@ export const LocalDatabaseBar: React.FC<LocalDatabaseBarProps> = ({
 
           {/* Database indicator */}
           <div className="flex items-center gap-1.5 text-slate-700 dark:text-[#C9D1D9]">
-            <Database className="w-3.5 h-3.5 text-indigo-400" />
+            <Database className="w-3.5 h-3.5 text-emerald-400" />
             <span>
-              Base de Datos Local activa: <strong>{students.length} estudiantes</strong>, <strong>{classSessions.length} clases</strong>
+              Base Local en Disco: <strong>{courses.length} cursos</strong>, <strong>{students.length} estudiantes</strong>, <strong>{classSessions.length} clases</strong>
             </span>
           </div>
 
           <span className="hidden lg:inline-block text-slate-400 dark:text-[#8B949E]">•</span>
           <span className="hidden lg:inline-block text-[11px] text-slate-500 dark:text-[#8B949E]">
-            Sin vinculación a Google Drive ni consumo de nube
+            Almacenamiento permanente en localStorage y copias JSON
           </span>
         </div>
 
         {/* Right: Spreadsheet Controls & Terminal Guide */}
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Hidden File Input for Spreadsheet Import */}
+          {/* Hidden File Input for Spreadsheet & JSON Import */}
           <input
             ref={fileInputRef}
             type="file"
-            accept=".ods,.xlsx,.xls,.csv"
+            accept=".ods,.xlsx,.xls,.csv,.json"
             onChange={handleFileChange}
             className="hidden"
           />
 
-          {/* Import Spreadsheet Button */}
+          {/* Import Button */}
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            title="Importar planilla .ods (LibreOffice Calc), .xlsx o .csv"
+            title="Restaurar copia de seguridad (.json) o importar planilla (.ods / .xlsx)"
             className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-[#30363D] text-slate-700 dark:text-[#C9D1D9] hover:bg-slate-100 dark:hover:bg-[#1F2937] transition-colors"
           >
-            <Upload className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Importar Planilla (.ods / .xlsx)</span>
+            <Upload className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Importar / Restaurar (.json / .ods)</span>
           </button>
 
-          {/* Export Spreadsheet Dropdown */}
+          {/* Export Dropdown */}
           <div className="relative">
             <button
               type="button"
               onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold transition-colors shadow-xs"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition-colors shadow-xs"
             >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>Exportar Planilla</span>
+              <HardDrive className="w-3.5 h-3.5" />
+              <span>Guardar / Exportar</span>
               <ChevronDown className="w-3 h-3 ml-0.5 opacity-80" />
             </button>
 
@@ -157,9 +196,25 @@ export const LocalDatabaseBar: React.FC<LocalDatabaseBarProps> = ({
                 className={`absolute right-0 mt-1 w-64 rounded-xl shadow-xl border ${theme.borderClass} ${theme.surfaceClass} z-40 p-1.5 animate-in fade-in duration-100`}
               >
                 <div className="px-2.5 py-1.5 border-b border-slate-200 dark:border-[#30363D] mb-1">
-                  <p className="text-[11px] font-bold text-slate-800 dark:text-[#E2E8F0]">Descargar Base de Datos</p>
-                  <p className="text-[10px] text-slate-500 dark:text-[#8B949E]">Selecciona el formato para tu planilla</p>
+                  <p className="text-[11px] font-bold text-slate-800 dark:text-[#E2E8F0]">Copia y Planillas Locales</p>
+                  <p className="text-[10px] text-slate-500 dark:text-[#8B949E]">Exporta tus datos sin depender de internet</p>
                 </div>
+
+                {/* 1. Full Database JSON backup */}
+                <button
+                  type="button"
+                  onClick={handleExportJsonBackup}
+                  className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-[#1F2937] flex items-center justify-between group mb-1 bg-emerald-500/10 border border-emerald-500/20"
+                >
+                  <div className="flex items-center gap-2">
+                    <Save className="w-3.5 h-3.5 text-emerald-400" />
+                    <div>
+                      <p className="text-xs font-bold text-emerald-400">Copia Total de Base (.JSON)</p>
+                      <p className="text-[10px] text-slate-400">Guarda cursos, alumnos y notas</p>
+                    </div>
+                  </div>
+                  <Download className="w-3.5 h-3.5 text-emerald-400" />
+                </button>
 
                 <button
                   type="button"
@@ -170,7 +225,7 @@ export const LocalDatabaseBar: React.FC<LocalDatabaseBarProps> = ({
                     <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
                     <div>
                       <p className="text-xs font-semibold text-slate-800 dark:text-[#E2E8F0]">LibreOffice Calc (.ODS)</p>
-                      <p className="text-[10px] text-slate-500 dark:text-[#8B949E]">Nativo de antiX Linux / LibreOffice</p>
+                      <p className="text-[10px] text-slate-500 dark:text-[#8B949E]">Nativo de antiX Linux</p>
                     </div>
                   </div>
                   <Download className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-400" />
@@ -182,13 +237,13 @@ export const LocalDatabaseBar: React.FC<LocalDatabaseBarProps> = ({
                   className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-[#1F2937] flex items-center justify-between group mt-1"
                 >
                   <div className="flex items-center gap-2">
-                    <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-400" />
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-blue-400" />
                     <div>
                       <p className="text-xs font-semibold text-slate-800 dark:text-[#E2E8F0]">Microsoft Excel (.XLSX)</p>
                       <p className="text-[10px] text-slate-500 dark:text-[#8B949E]">Compatible universal</p>
                     </div>
                   </div>
-                  <Download className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-400" />
+                  <Download className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-400" />
                 </button>
 
                 <button
@@ -255,3 +310,4 @@ export const LocalDatabaseBar: React.FC<LocalDatabaseBarProps> = ({
     </div>
   );
 };
+

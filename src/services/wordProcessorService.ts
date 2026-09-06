@@ -1,6 +1,181 @@
-import { Student, ClassSession } from '../types';
+import { Student, ClassSession, Course } from '../types';
 
 export type WordProcessorFormat = 'doc' | 'rtf' | 'html';
+
+/**
+ * Generates an editable document for a Course/Group formatted for Word Processors
+ * such as LibreOffice Writer, AbiWord, or Microsoft Word.
+ */
+export function generateCourseWordProcessorReport(
+  course: Course,
+  students: Student[],
+  classSessions: ClassSession[],
+  format: WordProcessorFormat = 'doc'
+): void {
+  const todayStr = new Date().toLocaleDateString('es-ES', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  });
+
+  const courseStudents = students.filter(s => s.courseId === course.id);
+  const totalStudents = courseStudents.length;
+  const avgPromedio = totalStudents > 0 
+    ? (courseStudents.reduce((sum, s) => sum + s.promedioFinal, 0) / totalStudents).toFixed(1)
+    : '0';
+  const avgAsistencia = totalStudents > 0 
+    ? Math.round(courseStudents.reduce((sum, s) => sum + s.asistencia, 0) / totalStudents)
+    : 0;
+  const aprobados = courseStudents.filter(s => s.estado === 'Aprobado').length;
+  const enRiesgo = courseStudents.filter(s => s.estado === 'En Riesgo').length;
+
+  const cleanCourseName = course.nombre.replace(/[^a-zA-Z0-9]/g, '_');
+
+  if (format === 'rtf') {
+    let rtfRows = '';
+    courseStudents.forEach((s, idx) => {
+      rtfRows += `${idx + 1}. ${s.nombre} | Asist: ${s.asistencia}% | Prom: ${s.promedioFinal.toFixed(1)} | Estado: ${s.estado || 'Regular'}\\par\n`;
+    });
+
+    const rtfContent = `{\\rtf1\\ansi\\deff0
+{\\fonttbl{\\f0\\fnil\\fcharset0 Arial;}}
+{\\colortbl ;\\red15\\green23\\blue42;\\red71\\green85\\blue105;\\red22\\green101\\blue52;}
+\\f0\\fs26\\b\\cf1 PLANILLA OFICIAL DE CALIFICACIONES - ${course.nombre}\\b0\\par
+\\fs18\\cf2 Materia: ${course.materia} | Turno: ${course.nivelTurno || 'General'} | Ciclo: ${course.anioLectivo || '2026'}\\par
+\\fs16\\cf2 Fecha de emision: ${todayStr} • Matricula: ${totalStudents} Alumnos • Promedio: ${avgPromedio} • Asistencia: ${avgAsistencia}%\\par
+\\line
+\\fs20\\b\\cf1 NOMINA DE ESTUDIANTES Y CALIFICACIONES\\b0\\par
+\\fs18\\cf2
+${rtfRows || 'Sin estudiantes registrados.\\par'}
+\\line
+\\fs18\\cf2 ___________________________            ___________________________\\par
+Firma Docente a Cargo                        Firma Direccion / Secretaria\\par
+}`;
+
+    const blob = new Blob([rtfContent], { type: 'application/rtf;charset=utf-8' });
+    downloadBlob(blob, `Planilla_Curso_${cleanCourseName}.rtf`);
+    return;
+  }
+
+  // HTML / DOC format (Compatible with LibreOffice Writer and Microsoft Word)
+  const studentsTableRows = courseStudents.map((s, idx) => {
+    const statusColor = s.estado === 'Aprobado' ? '#166534' : s.estado === 'Regular' ? '#b45309' : '#b91c1c';
+    const statusBg = s.estado === 'Aprobado' ? '#dcfce7' : s.estado === 'Regular' ? '#fef3c7' : '#fee2e2';
+    const rowBg = idx % 2 === 0 ? '#f8fafc' : '#ffffff';
+
+    return `
+      <tr style="background-color: ${rowBg};">
+        <td style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: center; font-weight: bold; color: #64748b;">${idx + 1}</td>
+        <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: bold; color: #0f172a;">${s.nombre}</td>
+        <td style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: center; color: #334155;">${s.asistencia}%</td>
+        <td style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: center; color: #334155;">${s.trabajoEnClase}</td>
+        <td style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: center; color: #334155;">${s.notasParciales.join(', ')}</td>
+        <td style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: center; font-weight: bold; color: #0f172a; font-size: 11pt;">${s.promedioFinal.toFixed(1)}</td>
+        <td style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: center;">
+          <span style="background-color: ${statusBg}; color: ${statusColor}; padding: 3px 7px; border-radius: 4px; font-weight: bold; font-size: 8.5pt;">
+            ${s.estado || 'Regular'}
+          </span>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  const docHtml = `
+    <!DOCTYPE html>
+    <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+    <head>
+      <meta charset="utf-8">
+      <title>Planilla Oficial - ${course.nombre}</title>
+      <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 30px; color: #0f172a; line-height: 1.4; }
+        .header-box { background-color: #0f172a; color: #ffffff; padding: 18px 24px; border-radius: 6px; margin-bottom: 20px; }
+        .header-title { font-size: 16pt; font-weight: bold; margin: 0; }
+        .header-sub { font-size: 10pt; color: #94a3b8; margin-top: 4px; }
+        .kpi-table { width: 100%; border-collapse: collapse; margin-bottom: 22px; }
+        .kpi-cell { background-color: #f1f5f9; border: 1px solid #cbd5e1; padding: 10px; text-align: center; border-radius: 4px; }
+        .kpi-val { font-size: 14pt; font-weight: bold; color: #0f172a; }
+        .kpi-lbl { font-size: 8.5pt; color: #64748b; text-transform: uppercase; font-weight: bold; }
+        table.roster { width: 100%; border-collapse: collapse; font-size: 9.5pt; margin-top: 10px; }
+        table.roster th { background-color: #0f172a; color: #ffffff; padding: 8px; font-weight: bold; border: 1px solid #0f172a; text-align: center; font-size: 9pt; }
+        .signatures { width: 100%; margin-top: 45px; border-collapse: collapse; }
+        .signatures td { width: 50%; text-align: center; padding: 20px; }
+        .sig-line { border-top: 1px solid #64748b; width: 75%; margin: 0 auto 6px auto; }
+      </style>
+    </head>
+    <body>
+      <div class="header-box">
+        <h1 class="header-title">PLANILLA OFICIAL DE CALIFICACIONES Y SEGUIMIENTO</h1>
+        <div class="header-sub">${course.nombre} • ${course.materia}</div>
+        <div style="font-size: 9pt; color: #cbd5e1; margin-top: 6px;">
+          Nivel / Turno: ${course.nivelTurno || 'General'} | Ciclo Lectivo: ${course.anioLectivo || '2026'} | Emisión: ${todayStr}
+        </div>
+      </div>
+
+      <table class="kpi-table">
+        <tr>
+          <td class="kpi-cell" style="width: 25%;">
+            <div class="kpi-lbl">Estudiantes</div>
+            <div class="kpi-val">${totalStudents}</div>
+          </td>
+          <td class="kpi-cell" style="width: 25%;">
+            <div class="kpi-lbl">Promedio Curso</div>
+            <div class="kpi-val">${avgPromedio} / 10</div>
+          </td>
+          <td class="kpi-cell" style="width: 25%;">
+            <div class="kpi-lbl">Asistencia Media</div>
+            <div class="kpi-val">${avgAsistencia}%</div>
+          </td>
+          <td class="kpi-cell" style="width: 25%;">
+            <div class="kpi-lbl">Aprobados / Riesgo</div>
+            <div class="kpi-val">${aprobados} / ${enRiesgo}</div>
+          </td>
+        </tr>
+      </table>
+
+      <h3 style="font-size: 11pt; font-weight: bold; color: #0f172a; margin-bottom: 6px;">
+        Nómina y Calificaciones Detalladas
+      </h3>
+
+      <table class="roster">
+        <thead>
+          <tr>
+            <th style="width: 5%;">#</th>
+            <th style="text-align: left; padding-left: 10px;">Estudiante</th>
+            <th style="width: 12%;">Asistencia</th>
+            <th style="width: 12%;">Trab. Clase</th>
+            <th style="width: 16%;">Parciales</th>
+            <th style="width: 12%;">Promedio</th>
+            <th style="width: 14%;">Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${studentsTableRows || '<tr><td colspan="7" style="text-align: center; padding: 12px;">No hay alumnos registrados en este curso.</td></tr>'}
+        </tbody>
+      </table>
+
+      <table class="signatures">
+        <tr>
+          <td>
+            <div class="sig-line"></div>
+            <div style="font-size: 9pt; font-weight: bold; color: #0f172a;">Firma y Aclaración Docente Titular</div>
+            <div style="font-size: 8pt; color: #64748b;">Responsable de Cátedra</div>
+          </td>
+          <td>
+            <div class="sig-line"></div>
+            <div style="font-size: 9pt; font-weight: bold; color: #0f172a;">Firma de Dirección / Secretaría</div>
+            <div style="font-size: 8pt; color: #64748b;">Institución Educativa</div>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  const mimeType = format === 'html' ? 'text/html;charset=utf-8' : 'application/msword;charset=utf-8';
+  const fileExt = format === 'html' ? 'html' : 'doc';
+  const blob = new Blob(['\ufeff' + docHtml], { type: mimeType });
+  downloadBlob(blob, `Planilla_Curso_${cleanCourseName}.${fileExt}`);
+}
 
 /**
  * Generates an editable document formatted specifically for Word Processors

@@ -4,22 +4,22 @@ import {
   Palette, 
   LogOut, 
   User as UserIcon, 
-  HelpCircle, 
   Users, 
   BookOpen, 
   RotateCw,
-  ChevronDown
+  ChevronDown,
+  LayoutGrid,
+  Gamepad2
 } from 'lucide-react';
 import { useTheme, THEMES } from '../context/ThemeContext';
 import { GoogleUser, ThemeKey } from '../types';
 
 interface NavbarProps {
-  activeTab: 'students' | 'classes';
-  setActiveTab: (tab: 'students' | 'classes') => void;
+  activeTab: 'courses' | 'students' | 'classes';
+  setActiveTab: (tab: 'courses' | 'students' | 'classes') => void;
   user: GoogleUser | null;
   onLogin: () => void;
   onLogout: () => void;
-  onOpenGuide: () => void;
   onOpenAntiXGuide?: () => void;
 }
 
@@ -29,7 +29,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   user,
   onLogin,
   onLogout,
-  onOpenGuide,
   onOpenAntiXGuide,
 }) => {
   const { theme, themeKey, setThemeKey } = useTheme();
@@ -47,7 +46,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Logo & Main Title */}
           <div className="flex items-center gap-3 shrink-0">
             <div className={`p-2.5 rounded-xl shadow-xs ${theme.accentClass}`}>
-              <GraduationCap className="w-5 h-5" />
+              {themeKey === 'gamer-8bit' ? <Gamepad2 className="w-5 h-5 animate-pulse" /> : <GraduationCap className="w-5 h-5" />}
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -57,9 +56,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="hidden sm:inline-block px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
                   antiX Local
                 </span>
+                {themeKey === 'gamer-8bit' && (
+                  <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-fuchsia-600/30 text-fuchsia-300 border border-fuchsia-500/50">
+                    8-BIT
+                  </span>
+                )}
               </div>
               <p className={`text-xs hidden md:block ${theme.textSecondaryClass}`}>
-                Planillas de Cálculo • Procesador de Texto • 100% Autónomo
+                Cursos & Grupos • Planillas de Cálculo • Base de Datos Local
               </p>
             </div>
           </div>
@@ -67,12 +71,25 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Navigation Tabs */}
           <nav className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-[#161B22] border border-slate-200/60 dark:border-[#30363D]">
             <button
+              id="tab-btn-courses"
+              type="button"
+              onClick={() => setActiveTab('courses')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all ${
+                activeTab === 'courses'
+                  ? `${theme.cardBgClass} ${theme.textPrimaryClass} shadow-xs font-semibold dark:border dark:border-[#30363D] dark:text-emerald-400`
+                  : `${theme.textSecondaryClass} hover:${theme.textPrimaryClass} hover:bg-slate-200/50 dark:hover:bg-[#1F2937]`
+              }`}
+            >
+              <LayoutGrid className="w-4 h-4" />
+              <span>Cursos / Grupos</span>
+            </button>
+            <button
               id="tab-btn-students"
               type="button"
               onClick={() => setActiveTab('students')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all ${
                 activeTab === 'students'
-                  ? `${theme.cardBgClass} ${theme.textPrimaryClass} shadow-xs font-semibold dark:border dark:border-[#30363D] dark:text-indigo-400`
+                  ? `${theme.cardBgClass} ${theme.textPrimaryClass} shadow-xs font-semibold dark:border dark:border-[#30363D] dark:text-emerald-400`
                   : `${theme.textSecondaryClass} hover:${theme.textPrimaryClass} hover:bg-slate-200/50 dark:hover:bg-[#1F2937]`
               }`}
             >
@@ -83,14 +100,14 @@ export const Navbar: React.FC<NavbarProps> = ({
               id="tab-btn-classes"
               type="button"
               onClick={() => setActiveTab('classes')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all ${
                 activeTab === 'classes'
-                  ? `${theme.cardBgClass} ${theme.textPrimaryClass} shadow-xs font-semibold dark:border dark:border-[#30363D] dark:text-indigo-400`
+                  ? `${theme.cardBgClass} ${theme.textPrimaryClass} shadow-xs font-semibold dark:border dark:border-[#30363D] dark:text-emerald-400`
                   : `${theme.textSecondaryClass} hover:${theme.textPrimaryClass} hover:bg-slate-200/50 dark:hover:bg-[#1F2937]`
               }`}
             >
               <BookOpen className="w-4 h-4" />
-              <span>Bitácora & Temario</span>
+              <span>Bitácora</span>
             </button>
           </nav>
 
@@ -109,7 +126,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className={`p-2 rounded-lg border ${theme.borderClass} ${theme.cardBgClass} ${theme.textSecondaryClass} hover:${theme.textPrimaryClass} hover:bg-slate-100 dark:hover:bg-[#1F2937] transition-colors flex items-center gap-1`}
                 title="Cambiar tema de diseño"
               >
-                <Palette className="w-4 h-4 text-indigo-400" />
+                <Palette className="w-4 h-4 text-emerald-400" />
                 <ChevronDown className="w-3 h-3 opacity-60 hidden sm:block" />
               </button>
 
@@ -135,13 +152,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                           }}
                           className={`w-full text-left px-2.5 py-2 rounded-lg text-xs flex flex-col gap-0.5 transition-colors ${
                             isActive 
-                              ? 'bg-indigo-600/15 text-indigo-400 border border-indigo-500/30 font-semibold' 
+                              ? 'bg-emerald-600/15 text-emerald-400 border border-emerald-500/30 font-semibold' 
                               : `${theme.textSecondaryClass} hover:bg-slate-100 dark:hover:bg-[#1F2937]`
                           }`}
                         >
                           <div className="flex items-center justify-between">
                             <span>{t.name}</span>
-                            {isActive && <span className="w-2 h-2 rounded-full bg-indigo-500"></span>}
+                            {isActive && <span className="w-2 h-2 rounded-full bg-emerald-500"></span>}
                           </div>
                           <span className="text-[11px] opacity-70 font-normal">
                             {t.description}
@@ -166,18 +183,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span>🐧 Terminal antiX</span>
               </button>
             )}
-
-            {/* Next.js & Vercel Deployment Guide Modal Trigger */}
-            <button
-              id="btn-deployment-guide"
-              type="button"
-              onClick={onOpenGuide}
-              className={`hidden md:inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border ${theme.borderClass} ${theme.cardBgClass} ${theme.textSecondaryClass} hover:${theme.textPrimaryClass} hover:bg-slate-100 dark:hover:bg-[#1F2937] transition-colors`}
-              title="Ver guía para Next.js, Vercel y GitHub"
-            >
-              <HelpCircle className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Vercel/GitHub</span>
-            </button>
 
             {/* Google User Menu or Sign In Button (Optional) */}
             {user ? (

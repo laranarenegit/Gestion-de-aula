@@ -1,1 +1,41 @@
 @import "tailwindcss";
+
+/* 🎮 Estilos Especiales para Tema Gamer 8-Bit */
+.theme-gamer-8bit {
+  font-family: 'VT323', monospace, system-ui;
+  font-size: 1.125rem;
+  letter-spacing: 0.04em;
+}
+
+.theme-gamer-8bit h1,
+.theme-gamer-8bit h2,
+.theme-gamer-8bit h3,
+.theme-gamer-8bit .font-arcade,
+.theme-gamer-8bit .arcade-font {
+  font-family: 'Press Start 2P', monospace, cursive;
+  letter-spacing: -0.02em;
+}
+
+.theme-gamer-8bit button,
+.theme-gamer-8bit .btn-arcade {
+  border-width: 2px;
+  image-rendering: pixelated;
+  transition: transform 0.05s ease, filter 0.1s ease;
+}
+
+.theme-gamer-8bit button:hover {
+  filter: brightness(1.2);
+}
+
+.theme-gamer-8bit button:active {
+  transform: translateY(2px);
+}
+
+.theme-gamer-8bit input,
+.theme-gamer-8bit select,
+.theme-gamer-8bit textarea {
+  font-family: 'VT323', monospace;
+  font-size: 1.25rem;
+  letter-spacing: 0.05em;
+}
+

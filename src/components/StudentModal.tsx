@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, UserPlus, Edit2, Calculator, CheckCircle } from 'lucide-react';
+import { X, UserPlus, Edit2, Calculator, CheckCircle, LayoutGrid } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
-import { Student } from '../types';
+import { Student, Course } from '../types';
 import { calculatePromedio, getStudentStatus } from '../data/initialData';
 
 interface StudentModalProps {
@@ -10,6 +10,8 @@ interface StudentModalProps {
   onSave: (student: Student) => void;
   onClose: () => void;
   existingCount: number;
+  courses?: Course[];
+  defaultCourseId?: string;
 }
 
 export const StudentModal: React.FC<StudentModalProps> = ({
@@ -18,10 +20,13 @@ export const StudentModal: React.FC<StudentModalProps> = ({
   onSave,
   onClose,
   existingCount,
+  courses = [],
+  defaultCourseId,
 }) => {
   const { theme } = useTheme();
 
   const [id, setId] = useState('');
+  const [courseId, setCourseId] = useState<string>('');
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
   const [asistencia, setAsistencia] = useState<number>(100);
@@ -32,6 +37,7 @@ export const StudentModal: React.FC<StudentModalProps> = ({
   useEffect(() => {
     if (student) {
       setId(student.id);
+      setCourseId(student.courseId || (courses[0]?.id || ''));
       setNombre(student.nombre);
       setEmail(student.email || '');
       setAsistencia(student.asistencia);
@@ -41,6 +47,7 @@ export const StudentModal: React.FC<StudentModalProps> = ({
     } else {
       const nextId = `EST-${String(existingCount + 1).padStart(3, '0')}`;
       setId(nextId);
+      setCourseId(defaultCourseId || (courses[0]?.id || ''));
       setNombre('');
       setEmail('');
       setAsistencia(90);
@@ -48,7 +55,7 @@ export const StudentModal: React.FC<StudentModalProps> = ({
       setNotasInput('8.0, 8.5');
       setObservaciones('');
     }
-  }, [student, existingCount, isOpen]);
+  }, [student, existingCount, isOpen, defaultCourseId, courses]);
 
   if (!isOpen) return null;
 
@@ -67,6 +74,7 @@ export const StudentModal: React.FC<StudentModalProps> = ({
 
     const updatedStudent: Student = {
       id: id.trim() || `EST-${Date.now().toString().slice(-4)}`,
+      courseId: courseId || undefined,
       nombre: nombre.trim(),
       email: email.trim() || undefined,
       asistencia: Math.min(100, Math.max(0, Number(asistencia))),
@@ -138,11 +146,35 @@ export const StudentModal: React.FC<StudentModalProps> = ({
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
                 required
-                className={`w-full px-3 py-2 text-xs rounded-lg border ${theme.borderClass} ${theme.cardBgClass} ${theme.textPrimaryClass} dark:bg-[#0D1117] focus:outline-hidden focus:ring-2 focus:ring-indigo-500`}
+                className={`w-full px-3 py-2 text-xs rounded-lg border ${theme.borderClass} ${theme.cardBgClass} ${theme.textPrimaryClass} dark:bg-[#0D1117] focus:outline-hidden focus:ring-2 focus:ring-emerald-500`}
                 placeholder="Ej: Sofía Valenzuela Morales"
               />
             </div>
           </div>
+
+          {/* Course / Grupo Assignment */}
+          {courses.length > 0 && (
+            <div>
+              <label className={`block text-xs font-semibold mb-1 ${theme.textSecondaryClass}`}>
+                Curso / Grupo o División Asignada
+              </label>
+              <div className="relative">
+                <select
+                  id="select-student-course"
+                  value={courseId}
+                  onChange={(e) => setCourseId(e.target.value)}
+                  className={`w-full px-3 py-2 text-xs font-medium rounded-lg border ${theme.borderClass} ${theme.cardBgClass} ${theme.textPrimaryClass} dark:bg-[#0D1117] focus:outline-hidden focus:ring-2 focus:ring-emerald-500`}
+                >
+                  <option value="">(Sin curso asignado / General)</option>
+                  {courses.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.nombre} — {c.materia} ({c.nivelTurno || 'General'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
 
           <div>
             <label className={`block text-xs font-semibold mb-1 ${theme.textSecondaryClass}`}>

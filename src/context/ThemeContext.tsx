@@ -2,6 +2,25 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ThemeConfig, ThemeKey } from '../types';
 
 export const THEMES: Record<ThemeKey, ThemeConfig> = {
+  'gamer-8bit': {
+    key: 'gamer-8bit',
+    name: '👾 Gamer Retro 8-Bit',
+    description: 'Estilo arcade retro de 8 bits con fuentes pixeladas, colores neón CRT y bordes de consola.',
+    bgClass: 'bg-[#080811] text-[#39ff14]',
+    cardBgClass: 'bg-[#101226]',
+    surfaceClass: 'bg-[#0c0d1d]',
+    textPrimaryClass: 'text-[#39ff14]',
+    textSecondaryClass: 'text-[#00e5ff]',
+    textMutedClass: 'text-[#ffdd00]',
+    accentClass: 'bg-[#ff007f] hover:bg-[#d9006c] text-white font-bold',
+    accentHoverClass: 'hover:bg-[#1a1c38] text-[#00e5ff]',
+    accentTextClass: 'text-[#00e5ff]',
+    borderClass: 'border-[#00e5ff]/40',
+    badgeSuccessClass: 'bg-emerald-950/80 text-[#39ff14] border border-[#39ff14]',
+    badgeWarningClass: 'bg-yellow-950/80 text-[#ffdd00] border border-[#ffdd00]',
+    badgeDangerClass: 'bg-rose-950/80 text-[#ff0055] border border-[#ff0055]',
+    isDark: true
+  },
   'oscuro-elegante': {
     key: 'oscuro-elegante',
     name: 'High Density / Elegant Dark',
@@ -113,7 +132,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (saved && saved in THEMES) {
       return saved as ThemeKey;
     }
-    return 'oscuro-elegante';
+    return 'gamer-8bit';
   });
 
   const handleSetThemeKey = (key: ThemeKey) => {
@@ -121,7 +140,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem('gestion_estudiantes_theme', key);
   };
 
-  const currentTheme = THEMES[themeKey] || THEMES['oscuro-elegante'];
+  const currentTheme = THEMES[themeKey] || THEMES['gamer-8bit'];
 
   useEffect(() => {
     if (currentTheme.isDark) {
@@ -129,7 +148,13 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } else {
       document.documentElement.classList.remove('dark');
     }
-  }, [currentTheme.isDark]);
+
+    if (themeKey === 'gamer-8bit') {
+      document.documentElement.classList.add('theme-gamer-8bit');
+    } else {
+      document.documentElement.classList.remove('theme-gamer-8bit');
+    }
+  }, [currentTheme.isDark, themeKey]);
 
   return (
     <ThemeContext.Provider value={{ themeKey, theme: currentTheme, setThemeKey: handleSetThemeKey }}>

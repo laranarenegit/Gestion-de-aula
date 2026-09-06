@@ -3,12 +3,12 @@ import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { Navbar } from './components/Navbar';
 import { LocalDatabaseBar } from './components/LocalDatabaseBar';
 import { GoogleSyncBar } from './components/GoogleSyncBar';
+import { CourseModule } from './components/CourseModule';
 import { StudentModule } from './components/StudentModule';
 import { ClassLogModule } from './components/ClassLogModule';
-import { DeploymentGuideModal } from './components/DeploymentGuideModal';
 import { AntiXTerminalGuideModal } from './components/AntiXTerminalGuideModal';
-import { Student, ClassSession, GoogleUser, WorkspaceSyncState } from './types';
-import { INITIAL_STUDENTS, INITIAL_CLASSES, calculatePromedio, getStudentStatus } from './data/initialData';
+import { Student, ClassSession, GoogleUser, WorkspaceSyncState, Course } from './types';
+import { INITIAL_STUDENTS, INITIAL_CLASSES, INITIAL_COURSES, calculatePromedio, getStudentStatus } from './data/initialData';
 import { 
   initAuth, 
   googleSignIn, 
@@ -24,11 +24,12 @@ import {
 function AppContent() {
   const { theme } = useTheme();
 
-  // Active Tab: 'students' | 'classes'
-  const [activeTab, setActiveTab] = useState<'students' | 'classes'>('students');
+  // Active Tab: 'courses' | 'students' | 'classes'
+  const [activeTab, setActiveTab] = useState<'courses' | 'students' | 'classes'>('courses');
 
-  // Deployment & Export Guide Modal
-  const [isGuideOpen, setIsGuideOpen] = useState(false);
+  // Selected Course ID for filtering when switching to students view
+  const [selectedCourseId, setSelectedCourseId] = useState<string | 'all'>('all');
+
   // antiX Terminal Guide Modal
   const [isAntiXGuideOpen, setIsAntiXGuideOpen] = useState(false);
 
@@ -47,6 +48,19 @@ function AppContent() {
     folderUrl: null,
     lastSyncTime: null,
     error: null,
+  });
+
+  // Courses State with Local Persistence
+  const [courses, setCourses] = useState<Course[]>(() => {
+    const saved = localStorage.getItem('gestion_cursos_data');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Error loading saved courses:', e);
+      }
+    }
+    return INITIAL_COURSES;
   });
 
   // Students & Classes State with Local Persistence Fallback
@@ -73,6 +87,11 @@ function AppContent() {
     }
     return INITIAL_CLASSES;
   });
+
+  // Persist courses locally on change
+  useEffect(() => {
+    localStorage.setItem('gestion_cursos_data', JSON.stringify(courses));
+  }, [courses]);
 
   // Persist data locally on change
   useEffect(() => {
@@ -327,16 +346,45 @@ function AppContent() {
     });
   };
 
+  // Course Actions
+  const handleSaveCourse = (courseData: Course) => {
+    setCourses(prev => {
+      const exists = prev.some(c => c.id === courseData.id);
+      if (exists) {
+        return prev.map(c => c.id === courseData.id ? courseData : c);
+      }
+      return [...prev, courseData];
+    });
+  };
+
+  const handleDeleteCourse = (courseId: string) => {
+    setCourses(prev => prev.filter(c => c.id !== courseId));
+    // Clear course assignment from students of this course without deleting the students
+    setStudents(prev => prev.map(s => s.courseId === courseId ? { ...s, courseId: undefined } : s));
+  };
+
+  // Full Database Import (restore JSON backup)
+  const handleImportFullDatabase = (data: { courses: Course[]; students: Student[]; classSessions: ClassSession[] }) => {
+    if (data.courses && data.courses.length > 0) {
+      setCourses(data.courses);
+    }
+    if (data.students && data.students.length > 0) {
+      setStudents(data.students);
+    }
+    if (data.classSessions && data.classSessions.length > 0) {
+      setClassSessions(data.classSessions);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Navbar with Account Switcher, Theme Selector and antiX guide */}
+      {/* Navbar with Course/Student/Class switcher, Account Switcher and 8-bit theme */}
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         user={user}
         onLogin={handleLogin}
         onLogout={handleLogout}
-        onOpenGuide={() => setIsGuideOpen(true)}
         onOpenAntiXGuide={() => setIsAntiXGuideOpen(true)}
       />
 
@@ -344,9 +392,11 @@ function AppContent() {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
         {/* Local antiX Database & Office Integration Bar (Primary) */}
         <LocalDatabaseBar
+          courses={courses}
           students={students}
           classSessions={classSessions}
           onImportStudents={(importedStudents) => setStudents(importedStudents)}
+          onImportFullDatabase={handleImportFullDatabase}
           onOpenTerminalGuide={() => setIsAntiXGuideOpen(true)}
         />
 
@@ -359,11 +409,31 @@ function AppContent() {
           />
         )}
 
-        {/* Dynamic Views */}
-        {activeTab === 'students' ? (
+        {/* Dynamic Views: Cursos / Grupos, Estudiantes y Registro de Clases */}
+        {activeTab === 'courses' ? (
+          <CourseModule
+            courses={courses}
+            students={students}
+            classSessions={classSessions}
+            onSaveCourse={handleSaveCourse}
+            onDeleteCourse={handleDeleteCourse}
+            onSelectCourseForStudents={(courseId) => {
+              setSelectedCourseId(courseId);
+              setActiveTab('students');
+            }}
+            onQuickAddStudentToCourse={(courseId) => {
+              setSelectedCourseId(courseId);
+              setActiveTab('students');
+            }}
+          />
+        ) : activeTab === 'students' ? (
           <StudentModule
             students={students}
             classSessions={classSessions}
+            courses={courses}
+            selectedCourseId={selectedCourseId}
+            onSelectCourseId={(cId) => setSelectedCourseId(cId)}
+            onOpenNewCourse={() => setActiveTab('courses')}
             onSaveStudent={handleSaveStudent}
             onDeleteStudent={handleDeleteStudent}
             onUpdateAttendance={handleUpdateAttendance}
@@ -380,12 +450,12 @@ function AppContent() {
         )}
       </main>
 
-      {/* Footer with quick links for antiX Linux & Next.js */}
+      {/* Footer focused purely on local antiX Linux execution */}
       <footer className={`py-6 border-t ${theme.borderClass} ${theme.cardBgClass} text-xs ${theme.textSecondaryClass}`}>
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
           <div className="flex items-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
-            <span>Gestión de Estudiantes • Optimizado para <strong>antiX Linux</strong> & LibreOffice</span>
+            <span>Gestión Pedagógica y Cursos • 100% Autónomo para <strong>antiX Linux</strong> & LibreOffice Calc</span>
           </div>
           <div className="flex items-center gap-4">
             <button
@@ -396,13 +466,6 @@ function AppContent() {
             >
               <span>🐧 Comandos Terminal antiX</span>
             </button>
-            <button
-              type="button"
-              onClick={() => setIsGuideOpen(true)}
-              className="text-indigo-400 hover:text-indigo-300 hover:underline font-medium"
-            >
-              Guía Next.js & Vercel
-            </button>
           </div>
         </div>
       </footer>
@@ -411,12 +474,6 @@ function AppContent() {
       <AntiXTerminalGuideModal
         isOpen={isAntiXGuideOpen}
         onClose={() => setIsAntiXGuideOpen(false)}
-      />
-
-      {/* Deployment & Export Guide Modal */}
-      <DeploymentGuideModal
-        isOpen={isGuideOpen}
-        onClose={() => setIsGuideOpen(false)}
       />
     </div>
   );

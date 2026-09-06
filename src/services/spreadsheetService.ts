@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { Student, ClassSession } from '../types';
+import { Student, ClassSession, Course } from '../types';
 import { calculatePromedio, getStudentStatus } from '../data/initialData';
 
 export type SpreadsheetFormat = 'ods' | 'xlsx' | 'csv';
@@ -261,3 +261,99 @@ export function downloadSpreadsheetTemplate(format: SpreadsheetFormat = 'ods'): 
 
   exportDatabaseToSpreadsheet(sampleStudents, [], format, 'Plantilla_Gestion_Estudiantes');
 }
+
+/**
+ * Exports a specific course's students and stats to a dedicated spreadsheet file
+ */
+export function exportCourseSpreadsheet(
+  course: Course,
+  students: Student[],
+  classSessions: ClassSession[],
+  format: SpreadsheetFormat = 'ods'
+): void {
+  const courseStudents = students.filter(s => s.courseId === course.id);
+  const cleanName = course.nombre.replace(/[^a-zA-Z0-9]/g, '_');
+  exportDatabaseToSpreadsheet(
+    courseStudents,
+    classSessions.filter(c => c.courseId === course.id || !c.courseId),
+    format,
+    `Planilla_Curso_${cleanName}`
+  );
+}
+
+/**
+ * Exports the entire application database (courses, students, classSessions)
+ * into a JSON file for complete local backup on antiX Linux.
+ */
+export function exportFullDatabaseJson(
+  courses: Course[],
+  students: Student[],
+  classSessions: ClassSession[]
+): void {
+  const payload = {
+    version: 2,
+    appName: 'Gestión de Estudiantes antiX Local',
+    exportedAt: new Date().toISOString(),
+    courses,
+    students,
+    classSessions,
+  };
+
+  const jsonStr = JSON.stringify(payload, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const dateStr = new Date().toISOString().slice(0, 10);
+  a.download = `Copia_Seguridad_Completa_${dateStr}.json`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 300);
+}
+
+/**
+ * Imports a full database JSON backup file, restoring courses, students, and sessions.
+ */
+export async function importFullDatabaseJson(file: File): Promise<{
+  courses?: Course[];
+  students?: Student[];
+  classSessions?: ClassSession[];
+  message: string;
+}> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result as string;
+        const parsed = JSON.parse(text);
+
+        if (!parsed || (typeof parsed !== 'object')) {
+          throw new Error('El archivo no contiene un formato JSON válido.');
+        }
+
+        const courses: Course[] = Array.isArray(parsed.courses) ? parsed.courses : [];
+        const students: Student[] = Array.isArray(parsed.students) ? parsed.students : [];
+        const classSessions: ClassSession[] = Array.isArray(parsed.classSessions) ? parsed.classSessions : [];
+
+        if (courses.length === 0 && students.length === 0) {
+          throw new Error('El archivo JSON no contiene listas de cursos ni estudiantes.');
+        }
+
+        resolve({
+          courses,
+          students,
+          classSessions,
+          message: `Restauración exitosa: ${courses.length} cursos, ${students.length} estudiantes y ${classSessions.length} clases recuperadas.`,
+        });
+      } catch (err: any) {
+        reject(err);
+      }
+    };
+    reader.onerror = () => reject(new Error('Error al leer el archivo JSON seleccionado.'));
+    reader.readAsText(file);
+  });
+}
+

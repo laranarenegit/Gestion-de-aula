@@ -1,28 +1,47 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
+import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { 
   getAuth, 
   signInWithPopup, 
   GoogleAuthProvider, 
   onAuthStateChanged, 
-  signOut,
-  User 
+  signOut, 
+  User,
+  Auth
 } from 'firebase/auth';
-import firebaseConfig from '../../firebase-applet-config.json';
 
-// Initialize Firebase App safely (prevent multiple initialization)
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+// Safe Firebase configuration from environment variables with graceful local fallback
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
+};
 
-// Configure Google Provider with required Google Workspace Scopes
-const provider = new GoogleAuthProvider();
-provider.addScope('https://www.googleapis.com/auth/spreadsheets');
-provider.addScope('https://www.googleapis.com/auth/drive.file');
-provider.addScope('https://www.googleapis.com/auth/documents');
+const isFirebaseConfigured = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId);
 
-// Enables account selector prompt so user can choose "con otra cuenta de google"
-provider.setCustomParameters({
-  prompt: 'select_account'
-});
+let app: FirebaseApp | null = null;
+let auth: Auth | null = null;
+let provider: GoogleAuthProvider | null = null;
+
+if (isFirebaseConfigured) {
+  try {
+    app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    provider = new GoogleAuthProvider();
+    provider.addScope('https://www.googleapis.com/auth/spreadsheets');
+    provider.addScope('https://www.googleapis.com/auth/drive.file');
+    provider.addScope('https://www.googleapis.com/auth/documents');
+    provider.setCustomParameters({
+      prompt: 'select_account',
+    });
+  } catch (error) {
+    console.warn('Firebase no se pudo inicializar; modo local activo:', error);
+  }
+}
+
+export { auth };
 
 // Cache the access token in memory as required by Workspace integration guidelines
 let cachedAccessToken: string | null = null;
@@ -35,6 +54,11 @@ export const initAuth = (
   onAuthSuccess?: (user: User, token: string | null) => void,
   onAuthFailure?: () => void
 ) => {
+  if (!auth) {
+    if (onAuthFailure) onAuthFailure();
+    return () => {};
+  }
+
   return onAuthStateChanged(auth, async (user: User | null) => {
     if (user) {
       if (onAuthSuccess) {
@@ -53,6 +77,10 @@ export const initAuth = (
  * Trigger Google Sign In popup with Workspace scopes
  */
 export const googleSignIn = async (): Promise<{ user: User; accessToken: string } | null> => {
+  if (!auth || !provider) {
+    throw new Error('Modo local antiX activo: Google Cloud/Firebase no está configurado. La aplicación opera con base de datos 100% local en disco.');
+  }
+
   try {
     isSigningIn = true;
     const result = await signInWithPopup(auth, provider);
@@ -85,10 +113,12 @@ export const getAccessToken = async (): Promise<string | null> => {
  * Sign out and clear cached token
  */
 export const logout = async () => {
-  try {
-    await signOut(auth);
-    cachedAccessToken = null;
-  } catch (error) {
-    console.error('Error signing out:', error);
+  if (auth) {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   }
+  cachedAccessToken = null;
 };
